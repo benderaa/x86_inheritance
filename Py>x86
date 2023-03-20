@@ -1,0 +1,88 @@
+section .data
+format db "yes", 0
+format_no db "no", 0
+
+section .text
+global main
+extern printf
+extern scanf
+
+main:
+    ; Read the number of test cases
+    push rbp
+    mov rbp, rsp
+    sub rsp, 16
+    mov rdi, format_input
+    mov esi, num_bytes_input
+    lea rdx, [rsp + 8]
+    xor eax, eax
+    call scanf
+    mov eax, [rsp + 8]
+    cmp eax, 0
+    jle .end
+
+    ; Loop through the test cases
+    mov ebx, 0
+.repeat:
+    ; Read the input value
+    mov rdi, format_input
+    mov esi, num_bytes_input
+    lea rdx, [rsp + 8]
+    xor eax, eax
+    call scanf
+    mov eax, [rsp + 8]
+
+    ; Check if the value is prime
+    test eax, eax
+    jle .not_prime
+    mov ecx, 2
+    mov edx, eax
+    mov esi, 1
+    cmp edx, ecx
+    jl .prime
+.loop:
+    mov eax, edx
+    cdq
+    idiv ecx
+    test edx, edx
+    jz .not_prime
+    inc ecx
+    cmp ecx, esi
+    jg .loop
+.prime:
+    mov rdi, format_output
+    mov esi, num_bytes_output
+    cmp eax, 0
+    cmovne rdi, format_no
+    xor eax, eax
+    call printf
+
+    ; Repeat for the remaining test cases
+    inc ebx
+    cmp ebx, [rsp + 8]
+    jl .repeat
+
+.end:
+    ; Epilogue
+    add rsp, 16
+    pop rbp
+    xor eax, eax
+    ret
+
+.not_prime:
+    mov rdi, format_output
+    mov esi, num_bytes_output
+    mov rdi, format_no
+    xor eax, eax
+    call printf
+
+    ; Repeat for the remaining test cases
+    inc ebx
+    cmp ebx, [rsp + 8]
+    jl .repeat
+
+.section .rodata
+format_input db "%d", 0
+format_output db "%s\n", 0
+num_bytes_input equ $ - format_input
+num_bytes_output equ $ - format_output
