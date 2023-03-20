@@ -1,0 +1,123 @@
+section .text
+global _Z15GetCfsCPUCountv
+_Z15GetCfsCPUCountv:
+    push rbp
+    mov rbp, rsp
+
+    xor esi, esi
+
+    ; Check if the system is Linux
+    section .data
+    _sys_linux db "__linux__", 0
+
+    section .text
+    mov eax, 0
+    push rax
+    push rax
+    push rax
+    push rax
+    push rax
+    push rax
+    push rax
+    push rax
+    push rax
+    lea rdi, [_sys_linux]
+    call getenv
+    add rsp, 40
+    cmp rax, 0
+    jz .end
+
+    ; Read the CPU quota and period from the cgroup file system
+    mov rdi, "/sys/fs/cgroup/cpu/cpu.cfs_quota_us"
+    call _Z8read_intPKc
+    mov edx, eax
+    mov rdi, "/sys/fs/cgroup/cpu/cpu.cfs_period_us"
+    call _Z8read_intPKc
+    cmp eax, 0
+    jle .end
+    imul esi, edx
+    idiv eax
+    cmp esi, 0
+    jle .end
+    jmp .return
+
+.end:
+    mov esi, -1
+
+.return:
+    ; Epilogue
+    pop rbp
+    ret
+
+_Z16OmpGetNumThreadsi:
+    push rbp
+    mov rbp, rsp
+
+    ; Check if we are already in a parallel region
+    call _Z13omp_in_parallelv
+    test al, al
+    jne .already_in_parallel
+
+    ; Determine the number of threads to use
+    mov esi, edi
+    cmp esi, 0
+    jg .valid_num_threads
+    call _Z14omp_get_num_procsv
+    mov ecx, eax
+    call _Z17omp_get_max_threadsv
+    cmp ecx, eax
+    jle .use_num_procs
+    mov esi, eax
+    jmp .check_thread_limit
+
+.valid_num_threads:
+    ; Honor the thread limit
+    call _Z14OmpGetThreadLimitv
+
+.check_thread_limit:
+    cmp esi, eax
+    jle .already_valid
+    mov esi, eax
+
+.use_num_procs:
+    ; Use the minimum of the thread limit and the available processors
+    call _Z14omp_get_num_procsv
+    cmp esi, eax
+    jle .already_valid
+    mov esi, eax
+
+.already_valid:
+    ; Ensure we always use at least 1 thread
+    cmp esi, 1
+    jge .return
+    mov esi, 1
+
+.already_in_parallel:
+    ; Return the number of threads
+    mov eax, esi
+
+.return:
+    ; Epilogue
+    pop rbp
+    ret
+
+; Helper function to read an integer from a file
+_Z8read_intPKc:
+    push rbp
+    mov rbp, rsp
+
+    ; Open the file
+    push rax
+    push rax
+    push rax
+    push rax
+    lea rdi, [rip + .filename]
+    xor esi, esi
+    call _ZStlsISt11char_traitsIcEERSt13basic_istreamIcT_ES5_RS4_
+
+    ; Read the value from the file
+    test rax, rax
+    jz .end
+    mov rdi, rsp
+    mov rcx, 0
+    call strt
